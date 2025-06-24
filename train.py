@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--time_delay', type=int, default=10, help='Set the time delay.')
     parser.add_argument('--task_type', type=int, default=1,
                         help='Choose the task to run the model, e.g., 1 for GraphWalkTest, 2 for FixedChunkTest, 3 for GraphWalkTest with sequence2.dot, 4 for GraphWalkTest with sequence1.dot, 5 for LongChunkTest, 6 for OverlapChunkTest1, 7 for OverlapChunkTest2')
-    parser.add_argument('--sequence_length', type=int, default=10_000, help='Set the sequence length to run the model.')
+    parser.add_argument('--sequence_length', type=int, default=10_0000, help='Set the sequence length to run the model.')
     parser.add_argument('--iter', type=int, default=1, help='Training time for each data.')
     parser.add_argument('--map_dimensions', type=int, default=3, help='Set the dimension of the map.')
     parser.add_argument('--adaptation_rate', type=float, default=0.001, help='Set the adaptation rate.')

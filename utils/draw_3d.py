@@ -101,7 +101,7 @@ def save_frame_3d_in_memory(frame, colors, i, dpi=80, iter_multiplier=1000,
 
 
 def create_scatter_gif_3d(ndarray, colors, gif_path='./results/output.gif', dpi=80, duration=0.5, n_jobs=-1, iter_multiplier=1000,
-                          xlim=(-1, 1), ylim=(-1, 1), zlim=(-1, 1), marker_size=100):
+                          xlim=(-1, 1), ylim=(-1, 1), zlim=(-1, 1), marker_size=1000):
     '''
     Create a GIF from a 3D scatter plot animation.
 
@@ -151,7 +151,7 @@ def create_scatter_gif_3d(ndarray, colors, gif_path='./results/output.gif', dpi=
     #     os.remove(filename)
 
 
-def animate_3d_coords(coords, colors, gif_path='output.gif', interval=20, marker_size=50):
+def animate_3d_coords(coords, colors, gif_path='./results/output.gif', interval=20, marker_size=50, stride=100):
     """
     coords: (T, N, 3) numpy array
     colors: list of hex or RGB tuples, length=N
@@ -159,6 +159,9 @@ def animate_3d_coords(coords, colors, gif_path='output.gif', interval=20, marker
     assert coords.ndim == 3 and coords.shape[2] == 3
     T, N, _ = coords.shape
     assert len(colors) == N, f"colors must match number of nodes (N={N})"
+
+    sampled_coords = coords[::stride]  # shape = (T//stride, N, 3)
+    T_sampled = sampled_coords.shape[0]
 
     # 全局坐标范围
     margin = 0.5
@@ -178,9 +181,9 @@ def animate_3d_coords(coords, colors, gif_path='output.gif', interval=20, marker
     def update(frame_idx):
         pos = coords[frame_idx]
         scat._offsets3d = (pos[:, 0], pos[:, 1], pos[:, 2])
-        ax.set_title(f"Frame {frame_idx}", fontsize=12)
+        ax.set_title(f"Frame {frame_idx * stride}", fontsize=12)
         return scat,
 
-    ani = FuncAnimation(fig, update, frames=T, interval=interval, blit=False)
+    ani = FuncAnimation(fig, update, frames=T_sampled, interval=interval, blit=False)
     ani.save(gif_path, dpi=80, writer=PillowWriter(fps=30))
     plt.close()
