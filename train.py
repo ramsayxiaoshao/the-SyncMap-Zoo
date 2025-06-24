@@ -26,7 +26,7 @@ def parse_args():
                         help='Choose the task to run the model, e.g., 1 for GraphWalkTest, 2 for FixedChunkTest, 3 for GraphWalkTest with sequence2.dot, 4 for GraphWalkTest with sequence1.dot, 5 for LongChunkTest, 6 for OverlapChunkTest1, 7 for OverlapChunkTest2')
     parser.add_argument('--sequence_length', type=int, default=10_0000, help='Set the sequence length to run the model.')
     parser.add_argument('--iter', type=int, default=1, help='Training time for each data.')
-    parser.add_argument('--map_dimensions', type=int, default=3, help='Set the dimension of the map.')
+    parser.add_argument('--map_dimensions', type=int, default=2, help='Set the dimension of the map.')
     parser.add_argument('--adaptation_rate', type=float, default=0.001, help='Set the adaptation rate.')
     parser.add_argument('--seed', type=int, default=412, help='Random seed.')
 
@@ -69,10 +69,11 @@ if __name__ == "__main__":
         print("score_avg:", score_avg)
 
     else:
-        file_path = "./data/graph.dot"
+        file_path = "./data/chain_mixed6_5.dot"
         env = GraphWalk(args.time_delay, file_path)
 
         output_size = env.getOutputSize()
+        true = env.trueLabel()
         input_sequence, input_class = env.getSequence(args.sequence_length)
 
         # 2. Train and Test
@@ -80,21 +81,27 @@ if __name__ == "__main__":
         neuron_group = SyncMap(number_of_nodes, args.map_dimensions, args.adaptation_rate * output_size)
 
         neuron_group.input(input_sequence)
-        labels, draw_3d_nodes = neuron_group.organize()
+        labels, draw_3d_nodes, plus, minus = neuron_group.organize()
         print("draw_3d_nodes:", draw_3d_nodes.shape)#(99990, 30, 3)
+        print("plus:", plus.shape)#(99990, 2)
+        print("minus:", minus.shape)#(99990, 2)
 
-        ari = adjusted_rand_score(labels, env.trueLabel())
+        ari = adjusted_rand_score(labels, true)
         print("ARI  =", ari)
 
-
-        color = labels2colors(labels)
+        print("true:", true)
+        color = labels2colors(true)
         print("color:", color)
         hex = convert_rgb_list_to_hex(color)
         print("hex:", hex)
         # create_scatter_gif_3d(draw_3d_nodes, hex)
 
-        animate_3d_coords(draw_3d_nodes, hex)
+        if args.map_dimensions == 3:
+            animate_3d_coords(draw_3d_nodes, hex)
 
+        else:
+            # animate_2d_coords_stride(draw_3d_nodes, hex)
+            animate_2d_coords_center(draw_3d_nodes, hex, plus, minus)
 
 
 

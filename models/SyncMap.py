@@ -17,6 +17,8 @@ class SyncMap:
         self.adaptation_rate = adaptation_rate
 
         self.draw_3d_nodes = []
+        self.center_plus = []
+        self.center_minus = []
 
     def inputGeneral(self, x):
         plus = x > 0.1
@@ -62,17 +64,22 @@ class SyncMap:
 
             self.draw_3d_nodes.append(self.syncmap)
 
+            # Update center
+            self.center_plus.append(center_plus)
+            self.center_minus.append(center_minus)
+
     def input(self, x):
         # print("x:", x)  # (100000, 9)
         self.inputGeneral(x)
 
         return
 
+
     def organize(self):
         # print("self.syncmap:", self.syncmap.shape)#(30, 3)
         self.organized = True
         self.labels = DBSCAN(eps=3, min_samples=2).fit_predict(self.syncmap)
-        return self.labels, np.array(self.draw_3d_nodes)
+        return self.labels, np.array(self.draw_3d_nodes), np.array(self.center_plus), np.array(self.center_minus)
 
     def activate(self, x):
         '''

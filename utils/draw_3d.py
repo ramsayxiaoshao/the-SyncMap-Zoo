@@ -164,16 +164,20 @@ def animate_3d_coords(coords, colors, gif_path='./results/output.gif', interval=
     T_sampled = sampled_coords.shape[0]
 
     # 全局坐标范围
-    margin = 0.5
-    x_min, x_max = coords[:, :, 0].min(), coords[:, :, 0].max()
-    y_min, y_max = coords[:, :, 1].min(), coords[:, :, 1].max()
-    z_min, z_max = coords[:, :, 2].min(), coords[:, :, 2].max()
-
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlim(x_min - margin, x_max + margin)
-    ax.set_ylim(y_min - margin, y_max + margin)
-    ax.set_zlim(z_min - margin, z_max + margin)
+
+    max_range = max(
+        abs(coords[:, :, 0].min()), abs(coords[:, :, 0].max()),
+        abs(coords[:, :, 1].min()), abs(coords[:, :, 1].max()),
+        abs(coords[:, :, 2].min()), abs(coords[:, :, 2].max()),
+    )
+
+    margin = 1.0  # 可调节边缘留白
+
+    ax.set_xlim(-max_range - margin, max_range + margin)
+    ax.set_ylim(-max_range - margin, max_range + margin)
+    ax.set_zlim(-max_range - margin, max_range + margin)
 
     # 初始化散点（只用第一帧）
     scat = ax.scatter(coords[0, :, 0], coords[0, :, 1], coords[0, :, 2], c=colors, s=marker_size)
@@ -187,3 +191,94 @@ def animate_3d_coords(coords, colors, gif_path='./results/output.gif', interval=
     ani = FuncAnimation(fig, update, frames=T_sampled, interval=interval, blit=False)
     ani.save(gif_path, dpi=80, writer=PillowWriter(fps=30))
     plt.close()
+
+
+def animate_2d_coords_stride(coords, colors, gif_path='./results/output.gif', interval=20, marker_size=50, stride=100):
+    """
+    coords: (T, N, 2) numpy array
+    colors: list of N 个节点的颜色
+    """
+    assert coords.ndim == 3 and coords.shape[2] == 2
+    T, N, _ = coords.shape
+    assert len(colors) == N
+
+    sampled_coords = coords[::stride]  # shape = (T//stride, N, 2)
+    T_sampled = sampled_coords.shape[0]
+
+    # 计算最大坐标范围以对称设置坐标轴（让原点居中）
+    margin = 0.5
+    x_max = np.abs(sampled_coords[:, :, 0]).max()
+    y_max = np.abs(sampled_coords[:, :, 1]).max()
+    R = max(x_max, y_max) + margin
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    scat = ax.scatter(sampled_coords[0, :, 0], sampled_coords[0, :, 1], c=colors, s=marker_size)
+
+    ax.set_xlim(-R, R)
+    ax.set_ylim(-R, R)
+    ax.set_aspect('equal')  # 保持长宽比一致
+    ax.grid(True)
+
+    def update(frame_idx):
+        pos = sampled_coords[frame_idx]
+        scat.set_offsets(pos)  # 2D only: (N, 2)
+        ax.set_title(f"Frame {frame_idx * stride}", fontsize=12)
+        return scat,
+
+    ani = FuncAnimation(fig, update, frames=T_sampled, interval=interval, blit=False)
+    ani.save(gif_path, dpi=80, writer=PillowWriter(fps=30))
+    plt.close()
+
+
+def animate_2d_coords_center(coords, colors, center_plus, center_minus, gif_path='./results/animate_2d_coords_center.gif', interval=20, marker_size=50, stride=100):
+    """
+    coords: (T, N, 2) numpy array
+    colors: list of N 个节点的颜色
+    """
+    assert coords.ndim == 3 and coords.shape[2] == 2
+    T, N, _ = coords.shape
+    assert len(colors) == N
+
+    coords = coords[::stride]
+    center_plus = center_plus[::stride].squeeze()
+    center_minus = center_minus[::stride].squeeze()
+    T_sampled = coords.shape[0]
+
+    # 计算最大坐标范围以对称设置坐标轴（让原点居中）
+    margin = 0.5
+    max_range = np.max(np.abs(np.concatenate([
+        coords.reshape(-1, 2),
+        center_plus.reshape(-1, 2),
+        center_minus.reshape(-1, 2)
+    ])))
+    R = max_range + margin
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    scat = ax.scatter(coords[0, :, 0], coords[0, :, 1], c=colors, s=marker_size)
+
+    # Center
+    plus_plot, = ax.plot(center_plus[0][0], center_plus[0][1], marker='x', color='blue', markersize=10, mew=2)
+    minus_plot, = ax.plot(center_minus[0][0], center_minus[0][1], marker='x', color='red', markersize=10, mew=2)
+
+    ax.set_xlim(-R, R)
+    ax.set_ylim(-R, R)
+    ax.set_aspect('equal')  # 保持长宽比一致
+    ax.grid(True)
+
+    def update(frame_idx):
+        pos = coords[frame_idx]
+        scat.set_offsets(pos)  # 2D only: (N, 2)
+
+        # Update plus center
+        plus_plot.set_data(center_plus[frame_idx][0], center_plus[frame_idx][1])
+        # Update minus center
+        minus_plot.set_data(center_minus[frame_idx][0], center_minus[frame_idx][1])
+
+        ax.set_title(f"Frame {frame_idx * stride}", fontsize=12)
+        return scat,
+
+    ani = FuncAnimation(fig, update, frames=T_sampled, interval=interval, blit=False)
+    ani.save(gif_path, dpi=80, writer=PillowWriter(fps=30))
+    plt.close()
+
+
