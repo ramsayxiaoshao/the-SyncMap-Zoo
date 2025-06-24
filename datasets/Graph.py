@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-from utils import to_categorical
+from utils.utils import to_categorical
 
 
 class GraphWalk:
@@ -73,10 +73,12 @@ class GraphWalk:
         if self.previous_output_class is None or self.previous_output_class == self.output_class:
             input_value = to_categorical(self.output_class, self.output_size) * np.exp(
                 -0.1 * self.time_counter) + np.random.randn(self.output_size) * noise_intensity
+            # print("input_value:", input_value)#(600,)
         else:
             input_value = to_categorical(self.output_class, self.output_size) * np.exp(
                 -0.1 * self.time_counter) + np.random.randn(self.output_size) * noise_intensity + to_categorical(
                 self.previous_output_class, self.output_size) * np.exp(-0.1 * (self.time_counter + self.time_delay))
+            # print("input_value:", input_value)
 
         return input_value
 

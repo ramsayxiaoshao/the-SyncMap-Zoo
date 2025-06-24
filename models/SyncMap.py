@@ -16,6 +16,8 @@ class SyncMap:
         self.syncmap = np.random.rand(input_size, dimensions)  # [9, 2]
         self.adaptation_rate = adaptation_rate
 
+        self.draw_3d_nodes = []
+
     def inputGeneral(self, x):
         plus = x > 0.1
         minus = ~ plus
@@ -23,7 +25,6 @@ class SyncMap:
         # print("minus:", minus)
 
         sequence_size = x.shape[0]
-
         for i in range(sequence_size):
             vplus = plus[i, :]
             vminus = minus[i, :]
@@ -59,6 +60,8 @@ class SyncMap:
             maximum = self.syncmap.max()
             self.syncmap = self.space_size * self.syncmap / maximum
 
+            self.draw_3d_nodes.append(self.syncmap)
+
     def input(self, x):
         # print("x:", x)  # (100000, 9)
         self.inputGeneral(x)
@@ -66,9 +69,10 @@ class SyncMap:
         return
 
     def organize(self):
+        # print("self.syncmap:", self.syncmap.shape)#(30, 3)
         self.organized = True
         self.labels = DBSCAN(eps=3, min_samples=2).fit_predict(self.syncmap)
-        return self.labels
+        return self.labels, np.array(self.draw_3d_nodes)
 
     def activate(self, x):
         '''
