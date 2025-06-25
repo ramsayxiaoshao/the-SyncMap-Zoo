@@ -1,12 +1,15 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import warnings
+from tqdm import tqdm
+from collections import deque
 
 from utils.utils import to_categorical
 
 
-class GraphWalk:
-    def __init__(self, time_delay, dataset):
+class GraphProcessor:
+    def __init__(self, time_delay, dataset, state_memory=2):
         self.time_delay = time_delay
         self.time_counter = 0
 
@@ -39,6 +42,9 @@ class GraphWalk:
         self.output_class = np.random.randint(self.output_size)  #
         self.previous_output_class = None
         self.previous_previous_output_class = None
+
+        # Store memory: set the number of activated nodes
+        self.working_memory = deque(maxlen=state_memory)
 
         # self.plotGraph()
 
@@ -82,17 +88,66 @@ class GraphWalk:
 
         return input_value
 
-    def getSequence(self, sequence_size):
-        self.input_sequence = np.empty((sequence_size, self.output_size))  # [100000, 9]
-        self.input_class = np.empty(sequence_size)  # [100000]
+    def random_walk_on_graph(self, sequence_size, reset_time=None):
+        connection_matrix = self.A
+        num_nodes = self.A.shape[0]
 
-        for i in range(sequence_size):
-            input_value = self.getInput()
+        # Find nodes with no outgoing connections
+        no_outgoing = np.where(np.sum(connection_matrix, axis=1) == 0)[0]
+        if len(no_outgoing) != 0:
+            warnings.warn("Some nodes have no outgoing connections.")
 
-            self.input_class[i] = self.output_class
-            self.input_sequence[i] = input_value
+        starting_node = np.random.choice(num_nodes)
+        while starting_node in no_outgoing:
+            warnings.warn("Starting node has no outgoing connections. Choosing another node.")
+            starting_node = np.random.choice(num_nodes)
 
-        return self.input_sequence, self.input_class
+        trajectory = []
+        one_hot_vectors = []
+
+        current_node = starting_node
+        steps_since_reset = 0
+
+        print("Random walk starting node:", current_node)
+
+        for _ in tqdm(range(sequence_size)):
+            # Record current node index
+            trajectory.append(current_node)
+
+            # Generate one-hot vector for current node
+            one_hot = np.zeros(num_nodes, dtype=np.bool_)
+            one_hot[current_node] = True
+            one_hot_vectors.append(one_hot)
+
+            # Choose next node based on outgoing connections
+            if np.sum(connection_matrix[current_node]) == 0 or (
+                    reset_time is not None and steps_since_reset == reset_time):
+                current_node = np.random.choice(num_nodes)
+                warnings.warn("No outgoing connections from current node. Choosing another node.")
+                steps_since_reset = 0
+            else:
+                prob = connection_matrix[current_node] / np.sum(connection_matrix[current_node])
+                current_node = np.random.choice(num_nodes, p=prob)
+                steps_since_reset += 1
+
+        return np.array(trajectory), np.array(one_hot_vectors)
+
+    def generate_memory_sequence(self, input_seq):
+        print("generate sequence...")
+
+        output_seq = []
+        for i_state in tqdm(range(len(input_seq))):
+            state = input_seq[i_state]
+            self.working_memory.append(state)
+            # convert to numpy
+            current_working_mem = np.asarray(self.working_memory)
+            current_working_mem = np.sum(current_working_mem, axis=0).astype(np.bool_)
+
+            # append to output_seq
+            output_seq.append(current_working_mem)
+
+        return np.asarray(output_seq)
+
 
     def plotGraph(self, save=True):
         options = {
